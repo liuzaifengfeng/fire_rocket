@@ -1,0 +1,76 @@
+{
+  "name": "火火箭V1.3",
+  "owner_uuid": "5e015354aaf7400dafbfd60095be58a2",
+  "creator_uuid": "5e015354aaf7400dafbfd60095be58a2",
+  "created_at": "2026-10-02 15:27:59",
+  "updated_at": "2026-10-02 15:27:59",
+  "modifier_uuid": "5e015354aaf7400dafbfd60095be58a2",
+  "content": "",
+  "archive": false,
+  "cbb_project": 0,
+  "thumb": "",
+  "ticket": 1,
+  "g_ticket": 1,
+  "boards": [],
+  "block_symbol_attrs_groups": {},
+  "default_sheet": "",
+  "branch_uuid": "",
+  "pcb_count": 0,
+  "format": "folder",
+  "config": "{\"type\":\"DOCHEAD\",\"ticket\":2}||{\"docType\":\"BOARD\",\"client\":\"f8367bbc5e5d65ce\",\"uuid\":\"f8393a0270daa305\",\"updateTime\":1789549693988,\"version\":\"1789549693988\",\"editVersion\":\"3.2.91\",\"user\":{\"uuid\":\"f3830d5ae8b3405e9a29e6ed0b2fd6d7\",\"nickname\":\"2024lzf\",\"username\":\"2024lzf\",\"avatar\":\"/image/avatar-default.png\"}}|\n{\"type\":\"META\",\"ticket\":1,\"id\":\"META\"}||{\"title\":\"Board1\",\"zIndex\":1}|\n{\"type\":\"DOCHEAD\",\"ticket\":408}||{\"docType\":\"CONFIG\",\"client\":\"f8367bbc5e5d65ce\",\"uuid\":\"CONFIG\",\"updateTime\":1789549693988,\"version\":\"1789549693988\",\"editVersion\":\"3.2.91\",\"user\":{\"uuid\":\"f3830d5ae8b3405e9a29e6ed0b2fd6d7\",\"nickname\":\"2024lzf\",\"username\":\"2024lzf\",\"avatar\":\"/image/avatar-default.png\"}}|\n{\"type\":\"META\",\"ticket\":409,\"id\":\"META\"}||{\"defaultSheet\":\"\"}",
+  "profile": {
+    "boards": {
+      "f8393a0270daa305": {
+        "uuid": "f8393a0270daa305",
+        "title": "Board1",
+        "zIndex": 1
+      }
+    },
+    "schematics": {
+      "9377abc52ac94627a77f8b0d5e6e911a": {
+        "uuid": "9377abc52ac94627a77f8b0d5e6e911a",
+        "name": "主板",
+        "board": "f8393a0270daa305",
+        "version": "1789549693988",
+        "updateTime": 1789549936729
+      }
+    },
+    "sheets": {
+      "0e2b6c91dbe64b7a9013654b07b93fac": {
+        "uuid": "0e2b6c91dbe64b7a9013654b07b93fac",
+        "title": "P1",
+        "schematic_uuid": "9377abc52ac94627a77f8b0d5e6e911a",
+        "zIndex": 1,
+        "version": "1789549693988",
+        "updateTime": 1789553875263
+      }
+    },
+    "pcbs": {
+      "f3c1c746831442c2b039961b90badce9": {
+        "uuid": "f3c1c746831442c2b039961b90badce9",
+        "title": "PCB1",
+        "board": "f8393a0270daa305",
+        "zIndex": null,
+        "parent_uuid": "",
+        "version": "1789549693988",
+        "updateTime": 1789625038986
+      }
+    },
+    "panels": {},
+    "blockSymbols": {
+      "3a2cf9e251994b70bd33d93d3c612748": {
+        "uuid": "3a2cf9e251994b70bd33d93d3c612748",
+        "title": "主板",
+        "docType": 17,
+        "source": "",
+        "version": "1766660650",
+        "updateTime": 1789549693988
+      }
+    },
+    "owner": {
+      "uuid": "C:\\Users\\LZF\\Documents\\LCEDA-Pro\\projects",
+      "username": "",
+      "nickname": ""
+    }
+  }
+}
