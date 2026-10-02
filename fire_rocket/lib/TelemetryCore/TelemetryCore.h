@@ -33,6 +33,7 @@ public:
     bool feed(uint8_t byte, uint32_t now);
     void reset();
     const Sample& sample() const { return sample_; }
+    Sample& mutableSample() { return sample_; }
     const SensorConfig& config() const { return config_; }
     const Counters& counters() const { return counters_; }
     uint32_t configRevision() const { return configRevision_; }
