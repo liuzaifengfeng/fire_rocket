@@ -9,7 +9,63 @@
 #include <stddef.h>
 
 // Telemetry-only firmware: no arming, ignition, recovery or prediction outputs.
+class AltitudeKalman {
+public:
+    void reset(float initZ = 0.0f) {
+        z = initZ;
+        vz = 0.0f;
+        p00 = 1.0f; p01 = 0.0f;
+        p10 = 0.0f; p11 = 1.0f;
+        lastUpdateUs = 0;
+        initialized = true;
+    }
+
+    void update(float z_baro, float az, float dt) {
+        if (!initialized || dt <= 0.0f || dt > 0.2f) return;
+
+        float z_pred  = z + vz * dt + 0.5f * az * dt * dt;
+        float vz_pred = vz + az * dt;
+
+        const float Q_accel = 1.0f;
+        float q00 = 0.25f * dt * dt * dt * dt * Q_accel;
+        float q01 = 0.5f * dt * dt * dt * Q_accel;
+        float q11 = dt * dt * Q_accel;
+
+        float p00_p = p00 + dt * (p01 + p10) + dt * dt * p11 + q00;
+        float p01_p = p01 + dt * p11 + q01;
+        float p10_p = p10 + dt * p11 + q01;
+        float p11_p = p11 + q11;
+
+        const float R_baro = 0.25f;
+        float S = p00_p + R_baro;
+        float K0 = p00_p / S;
+        float K1 = p10_p / S;
+
+        float y = z_baro - z_pred;
+        z  = z_pred  + K0 * y;
+        vz = vz_pred + K1 * y;
+
+        p00 = (1.0f - K0) * p00_p;
+        p01 = (1.0f - K0) * p01_p;
+        p10 = p10_p - K1 * p00_p;
+        p11 = p11_p - K1 * p01_p;
+    }
+
+    float altitude() const { return z; }
+    float velocity() const { return vz; }
+    bool  ready()    const { return initialized; }
+
+private:
+    float z = 0.0f;
+    float vz = 0.0f;
+    float p00 = 1.0f, p01 = 0.0f, p10 = 0.0f, p11 = 1.0f;
+    uint32_t lastUpdateUs = 0;
+    bool initialized = false;
+};
+
 namespace {
+AltitudeKalman kf;
+uint32_t lastKfUs = 0;
 constexpr uint8_t buttonPin = 9;
 constexpr uint8_t disabledOutputs[] = {0, 1, 7};
 HardwareSerial sensor(1);
@@ -64,13 +120,52 @@ void acceptByte(uint8_t byte, uint32_t now) {
         revision = parser.configRevision(); monitor.invalidate();
     }
     if (updated) {
+        const auto& s = parser.sample();
+
+        if (monitor.zeroed() && (s.fields & telemetry::Altitude)) {
+            float rawRelHeight = s.altitudeM - monitor.baselineM();
+            uint32_t currentUs = micros();
+            if (!kf.ready()) {
+                kf.reset(rawRelHeight);
+                lastKfUs = currentUs;
+            } else {
+                float dt = (currentUs - lastKfUs) * 1e-6f;
+                lastKfUs = currentUs;
+
+                float q0 = s.quaternion[0];
+                float q1 = s.quaternion[1];
+                float q2 = s.quaternion[2];
+                float q3 = s.quaternion[3];
+
+                float ax = s.accel[0];
+                float ay = s.accel[1];
+                float az = s.accel[2];
+
+                float a_nav_z = 2.0f * (q1 * q3 - q0 * q2) * ax +
+                                2.0f * (q2 * q3 + q0 * q1) * ay +
+                                (q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3) * az - 9.80665f;
+
+                float accNorm = sqrtf(ax * ax + ay * ay + az * az);
+                if (accNorm < 1.96f) {
+                    a_nav_z = 0.0f;
+                }
+
+                kf.update(rawRelHeight, a_nav_z, dt);
+                parser.mutableSample().altitudeM = kf.altitude() + monitor.baselineM();
+            }
+        } else {
+            if (kf.ready()) kf.reset(0.0f);
+        }
+
         monitor.accept(parser.sample(), settings);
         recorder.append(monitor, settings, now);
     }
 }
 bool zeroHeight() {
     if (recorder.active() || recorder.exporting()) return false;
-    return monitor.zero(millis(), settings);
+    bool ok = monitor.zero(millis(), settings);
+    if (ok) kf.reset(0.0f);
+    return ok;
 }
 bool startRecording() {
     confirmation = false;
@@ -134,6 +229,9 @@ void status() {
     else Serial.println("HEIGHT INVALID");
     if (monitor.tilt(millis(), settings, tilt)) Serial.printf("TILT %.3f deg\n", tilt);
     else Serial.println("TILT INVALID");
+    if (kf.ready()) {
+        Serial.printf("KF_HEIGHT=%.3f KF_VEL=%.3f\n", kf.altitude(), kf.velocity());
+    }
     const uint32_t now = millis();
     Serial.printf("DIAG firmware=2 rx_bytes=%lu rx_age_ms=%ld queries=%lu height_reason=%s tilt_reason=%s zero_ready=%d\n",
         (unsigned long)receivedBytes, receivedBytes ? (long)uint32_t(now-lastByteAt) : -1L,
@@ -249,14 +347,17 @@ void draw(uint32_t now) {
     if (!oledReady || uint32_t(now - drawnAt) < 200) return;
     drawnAt = now;
     display.clearBuffer(); display.setFont(u8g2_font_5x7_tr);
-    char line[32]; float h, tilt;
+    char line[32];
     if (page == 0) {
-        if (monitor.relativeHeight(now, settings, h)) snprintf(line,sizeof(line),"H %7.2fm",h);
-        else snprintf(line,sizeof(line),"H --");
-        display.drawStr(0,7,line);
-        if (monitor.tilt(now, settings, tilt)) snprintf(line,sizeof(line),"T %6.1fdeg",tilt);
-        else snprintf(line,sizeof(line),"T --");
-        display.drawStr(0,15,line);
+        if (kf.ready()) {
+            snprintf(line, sizeof(line), "KF%6.1fm", kf.altitude());
+            display.drawStr(0, 7, line);
+            snprintf(line, sizeof(line), "Vz%6.1fm/s", kf.velocity());
+            display.drawStr(0, 15, line);
+        } else {
+            display.drawStr(0, 7, "KF --");
+            display.drawStr(0, 15, "Vz --");
+        }
         const char* health = !parser.config().known ? (receivedBytes ? "WAIT CONFIG" : "NO UART RX") :
             !monitor.hasSample() ? "NO SAMPLE" : !monitor.fresh(now,settings) ? "STALE" :
             !monitor.zeroed() ? "NO ZERO" : "DATA OK";

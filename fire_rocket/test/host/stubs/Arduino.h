@@ -12,6 +12,7 @@ const int LOW=0, HIGH=1, OUTPUT=1, INPUT_PULLUP=2, SERIAL_8N1=0;
 extern uint32_t fakeNow;
 extern int mockPins[32];
 inline uint32_t millis() { return fakeNow; }
+inline uint32_t micros() { return fakeNow * 1000; }
 inline void delay(unsigned ms) { fakeNow+=ms; }
 inline int digitalRead(int pin) { return mockPins[pin]; }
 inline void digitalWrite(int pin,int v) { mockPins[pin]=v; }
